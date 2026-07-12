@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OBFX — Code Obfuscator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0E14;
+    --surface:#121826;
+    --surface-2:#1A2233;
+    --border:#2A3350;
+    --border-soft:#212A3F;
+    --text:#E7E9EE;
+    --muted:#8A93AC;
+    --amber:#E8A33D;
+    --amber-dim:#B77E2C;
+    --cyan:#5EEAD4;
+    --danger:#F0654A;
+    --mono:'JetBrains Mono', monospace;
+    --display:'Space Grotesk', sans-serif;
+    --body:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(232,163,61,0.07), transparent 60%),
+      radial-gradient(1000px 500px at 100% 10%, rgba(94,234,212,0.06), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--amber); color:#0B0E14; }
+  a{ color:var(--cyan); }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 24px; }
+
+  /* ---------- header ---------- */
+  header{
+    border-bottom:1px solid var(--border-soft);
+    position:sticky; top:0; z-index:20;
+    background:rgba(11,14,20,0.85);
+    backdrop-filter:blur(10px);
+  }
+  header .wrap{
+    display:flex; align-items:center; justify-content:space-between;
+    padding-top:16px; padding-bottom:16px;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-logo{
+    width:30px; height:30px; border-radius:7px;
+    object-fit:cover; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-weight:700; font-size:13px; color:#0B0E14;
+    flex-shrink:0;
+  }
+  .brand-name{ font-family:var(--display); font-weight:700; font-size:18px; letter-spacing:0.2px; }
+  .brand-tag{ font-family:var(--mono); font-size:11px; color:var(--muted); margin-left:2px; }
+
+  .btn{
+    font-family:var(--mono); font-size:13px; font-weight:500;
+    border-radius:8px; border:1px solid var(--border);
+    padding:8px 14px; cursor:pointer; background:var(--surface); color:var(--text);
+    transition:border-color .15s ease, transform .1s ease, background .15s ease;
+  }
+  .btn:hover{ border-color:var(--amber-dim); background:var(--surface-2); }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{
+    background:var(--amber); color:#17110A; border-color:var(--amber); font-weight:600;
+  }
+  .btn-primary:hover{ background:#F0AE52; border-color:#F0AE52; }
+  .btn-primary:disabled{
+    background:var(--surface-2); color:var(--muted); border-color:var(--border); cursor:not-allowed;
+  }
+  .btn-ghost{ background:transparent; }
+  .btn-sm{ padding:5px 10px; font-size:12px; }
+
+  /* ---------- hero ---------- */
+  .hero{ padding:64px 0 40px; }
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; color:var(--cyan);
+    letter-spacing:0.08em; text-transform:uppercase; display:flex; align-items:center; gap:8px;
+    margin-bottom:18px; flex-wrap:wrap;
+  }
+  .eyebrow::before{ content:''; width:16px; height:1px; background:var(--cyan); display:inline-block; }
+  .hero h1{
+    font-family:var(--display); font-weight:700; font-size:clamp(32px,5vw,54px);
+    line-height:1.06; margin:0 0 18px; letter-spacing:-0.01em; max-width:760px;
+  }
+  .hero h1 em{ font-style:normal; color:var(--amber); }
+  .hero p.sub{ color:var(--muted); font-size:17px; max-width:560px; line-height:1.6; margin:0 0 30px; }
+
+  .hero-actions{ display:flex; gap:12px; margin-bottom:44px; flex-wrap:wrap; }
+
+  /* signature scramble strip */
+  .scramble-box{
+    border:1px solid var(--border); border-radius:12px; background:var(--surface);
+    padding:0; overflow:hidden;
+  }
+  .scramble-head{
+    display:flex; align-items:center; gap:8px; padding:10px 14px;
+    border-bottom:1px solid var(--border-soft); background:var(--surface-2);
+  }
+  .scramble-head .tlc{ width:9px; height:9px; border-radius:50%; }
+  .scramble-head .tlc:nth-child(1){ background:#F0654A; }
+  .scramble-head .tlc:nth-child(2){ background:#E8A33D; }
+  .scramble-head .tlc:nth-child(3){ background:#5EEAD4; }
+  .scramble-head .flabel{ font-family:var(--mono); font-size:11px; color:var(--muted); margin-left:6px; }
+  .scramble-body{ padding:22px 24px; font-family:var(--mono); font-size:14.5px; line-height:1.9; min-height:132px; }
+  .scramble-line{ white-space:pre; }
+  .scramble-line .lbl{ color:var(--muted); }
+  .scramble-line .out{ color:var(--cyan); }
+
+  /* ---------- panel layout ---------- */
+  .panel-title{ font-family:var(--display); font-weight:600; font-size:24px; margin:0 0 4px; }
+  .panel-sub{ color:var(--muted); font-size:14px; margin:0 0 24px; }
+
+  .controls-row{ display:flex; gap:14px; align-items:flex-start; margin-bottom:22px; flex-wrap:wrap; }
+
+  /* ---------- custom dropdowns (no native <select>) ---------- */
+  .dropdown{ position:relative; width:260px; max-width:100%; user-select:none; }
+  .dd-trigger{
+    width:100%; display:flex; align-items:center; gap:10px;
+    background:var(--surface); border:1px solid var(--border); border-radius:9px;
+    padding:10px 12px; cursor:pointer; color:var(--text); font-family:var(--body);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dd-trigger:hover{ border-color:var(--amber-dim); }
+  .dropdown.open .dd-trigger{ border-color:var(--amber); background:var(--surface-2); }
+  .dd-ext{
+    font-family:var(--mono); font-size:11px; color:var(--cyan);
+    background:rgba(94,234,212,0.08); border:1px solid rgba(94,234,212,0.25);
+    padding:2px 6px; border-radius:5px; flex-shrink:0;
+  }
+  .dd-label{ font-size:14px; font-weight:500; flex:1; text-align:left; }
+  .dd-sub{ display:block; font-size:10.5px; color:var(--muted); font-weight:400; margin-top:1px; }
+  .dd-chev{
+    color:var(--muted); font-size:11px; transition:transform .18s ease; flex-shrink:0;
+  }
+  .dropdown.open .dd-chev{ transform:rotate(180deg); color:var(--amber); }
+
+  .dd-menu{
+    position:absolute; top:calc(100% + 8px); left:0; right:0;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+    box-shadow:0 16px 40px rgba(0,0,0,0.45);
+    padding:6px; max-height:320px; overflow-y:auto;
+    opacity:0; transform:translateY(-6px) scale(0.98); pointer-events:none;
+    transition:opacity .15s ease, transform .15s ease;
+    z-index:30;
+  }
+  .dropdown.open .dd-menu{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+  .dd-item{
+    display:flex; align-items:center; gap:10px; padding:8px 9px; border-radius:7px;
+    cursor:pointer; font-size:13.5px; color:var(--text);
+  }
+  .dd-item:hover{ background:rgba(232,163,61,0.09); }
+  .dd-item.active{ background:rgba(94,234,212,0.08); color:var(--cyan); }
+  .dd-item .dd-ext{ min-width:44px; text-align:center; }
+  .dd-item.active .dd-ext{ color:var(--amber); border-color:rgba(232,163,61,0.35); background:rgba(232,163,61,0.1); }
+  .dd-check{ margin-left:auto; color:var(--amber); font-size:12px; opacity:0; }
+  .dd-item.active .dd-check{ opacity:1; }
+  .dd-item-body{ flex:1; }
+  .dd-item-body small{ display:block; font-size:11px; color:var(--muted); margin-top:1px; }
+
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; padding:8px 0 80px; }
+  @media (max-width:880px){ .grid{ grid-template-columns:1fr; } }
+
+  .card{
+    border:1px solid var(--border); border-radius:12px; background:var(--surface);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .card-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; border-bottom:1px solid var(--border-soft); background:var(--surface-2);
+  }
+  .card-bar .lbl{ font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .card-bar .meta{ font-family:var(--mono); font-size:11px; color:var(--muted); }
+
+  textarea, pre.output{
+    width:100%; flex:1; min-height:320px; resize:vertical;
+    background:transparent; border:none; outline:none; color:var(--text);
+    font-family:var(--mono); font-size:13px; line-height:1.6; padding:16px;
+    tab-size:2;
+  }
+  pre.output{ margin:0; white-space:pre-wrap; word-break:break-word; overflow:auto; color:var(--text); }
+  pre.output.empty{ color:var(--muted); }
+  pre.output code{ font-family:inherit; background:none; }
+  pre.output.nowrap, textarea.nowrap{ white-space:pre; overflow-x:auto; word-break:normal; }
+  /* syntax highlight tokens — self-contained, no external highlighter */
+  .tok-comment{ color:#6B7394; font-style:italic; }
+  .tok-keyword{ color:#FF6B81; font-weight:600; }
+  .tok-string{ color:#7EE787; }
+  .tok-number{ color:#C99BFF; }
+  textarea::placeholder{ color:#4A536B; }
+
+  /* live-highlighted input: transparent textarea layered over a highlighted <pre> */
+  .code-editor{ position:relative; flex:1; min-height:320px; resize:vertical; overflow:auto; }
+  .code-editor pre.input-highlight, .code-editor textarea{
+    position:absolute; inset:0; margin:0; padding:16px; width:100%; height:100%;
+    font-family:var(--mono); font-size:13px; line-height:1.6; tab-size:2;
+    white-space:pre-wrap; word-break:break-word; box-sizing:border-box; border:none;
+  }
+  .code-editor.nowrap pre.input-highlight, .code-editor.nowrap textarea{
+    white-space:pre; word-break:normal;
+  }
+  .code-editor pre.input-highlight{
+    color:var(--text); pointer-events:none; overflow:hidden; background:transparent; z-index:1;
+  }
+  .code-editor textarea{
+    background:transparent; color:transparent; caret-color:var(--text);
+    outline:none; resize:none; overflow:auto; z-index:2; min-height:0;
+  }
+  .code-editor textarea::placeholder{ color:#4A536B; -webkit-text-fill-color:#4A536B; }
+
+  .card-foot{ padding:10px 14px; border-top:1px solid var(--border-soft); display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .stat-strip{ font-family:var(--mono); font-size:11px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap; }
+  .stat-strip b{ color:var(--text); }
+
+  .notice{
+    font-family:var(--mono); font-size:11.5px; color:var(--muted);
+    border:1px dashed var(--border); border-radius:8px; padding:10px 12px; margin-top:14px;
+    line-height:1.6;
+  }
+  .notice b{ color:var(--amber); }
+
+  footer{ border-top:1px solid var(--border-soft); padding:36px 0 28px; }
+  .footer-top{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    flex-wrap:wrap; gap:24px; padding-bottom:24px; margin-bottom:20px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .footer-brand{ display:flex; align-items:center; gap:10px; }
+  .footer-tag{ color:var(--muted); font-size:13px; margin-top:8px; max-width:320px; line-height:1.6; }
+  .socials{ display:flex; gap:10px; }
+  .social-btn{
+    width:38px; height:38px; border-radius:9px; border:1px solid var(--border); background:var(--surface);
+    display:flex; align-items:center; justify-content:center; color:var(--muted);
+    transition:border-color .15s ease, color .15s ease, background .15s ease, transform .15s ease;
+  }
+  .social-btn:hover{ border-color:var(--amber-dim); color:var(--amber); background:var(--surface-2); transform:translateY(-2px); }
+  .social-btn svg{ width:17px; height:17px; }
+  footer .wrap > .footer-bottom{ display:flex; justify-content:space-between; align-items:center; font-family:var(--mono); font-size:11.5px; color:var(--muted); flex-wrap:wrap; gap:10px; }
+
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    font-family:var(--mono); font-size:13px; padding:11px 18px; border-radius:9px;
+    opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease; z-index:50;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:6px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <!-- drop your own logo image here, e.g. <img src="logo.png" class="brand-logo"> -->
+      <div><div class="brand-name">OBFX</div></div>
+      <span class="brand-tag">/ code obfuscator</span>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow" id="langEyebrow">13 languages supported · unlimited use</div>
+    <h1>Make your code unreadable.<br><em>On purpose.</em></h1>
+    <p class="sub">Strip comments, mangle identifiers, and encode string literals — right in the browser. Nothing is uploaded anywhere.</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary" onclick="document.getElementById('tool').scrollIntoView({behavior:'smooth'})">Start obfuscating</button>
+    </div>
+
+    <div class="scramble-box">
+      <div class="scramble-head">
+        <span class="tlc"></span><span class="tlc"></span><span class="tlc"></span>
+        <span class="flabel">live.lua</span>
+      </div>
+      <div class="scramble-body">
+        <div class="scramble-line"><span class="lbl">// before  </span><span id="scrambleSrc"></span></div>
+        <div class="scramble-line" style="margin-top:8px;"><span class="lbl">// after   </span><span class="out" id="scrambleOut"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tool">
+  <div class="wrap">
+    <h2 class="panel-title">The tool</h2>
+    <p class="panel-sub">Pick a language, pick how far to push it, paste your code.</p>
+
+    <div class="controls-row">
+      <div class="dropdown" id="langDropdown">
+        <button class="dd-trigger" id="ddTrigger" type="button">
+          <span class="dd-ext" id="ddExt">.css</span>
+          <span class="dd-label" id="ddLabel">CSS</span>
+          <span class="dd-chev">▾</span>
+        </button>
+        <div class="dd-menu" id="ddMenu"></div>
+      </div>
+
+      <div class="dropdown" id="levelDropdown">
+        <button class="dd-trigger" id="lvlTrigger" type="button">
+          <span class="dd-ext" id="lvlExt">MED</span>
+          <span class="dd-label" id="lvlLabel">Medium<span class="dd-sub" id="lvlSub">+ string encoding</span></span>
+          <span class="dd-chev">▾</span>
+        </button>
+        <div class="dd-menu" id="lvlMenu"></div>
+      </div>
+
+      <button class="btn btn-sm" id="wrapToggle" type="button" style="align-self:flex-start;">Wrap: On</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-bar">
+          <span class="lbl">input</span>
+          <span class="meta" id="inMeta">0 chars</span>
+        </div>
+        <div class="code-editor" id="inputEditor">
+          <pre class="input-highlight" id="inputHighlight" aria-hidden="true"></pre>
+          <textarea id="inputCode" placeholder="Paste your code here…" spellcheck="false"></textarea>
+        </div>
+        <div class="card-foot">
+          <div class="stat-strip"><span id="langHint">CSS selected</span></div>
+          <button class="btn btn-primary" id="obfBtn">Obfuscate</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-bar">
+          <span class="lbl">output</span>
+          <span class="meta" id="outMeta">0 chars</span>
+        </div>
+        <pre class="output empty" id="outputCode"><code id="outputCodeInner">Obfuscated code will show up here.</code></pre>
+        <div class="card-foot">
+          <div class="stat-strip" id="techStrip"></div>
+          <button class="btn btn-sm" id="copyBtn">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="notice">
+      <b>Heads up —</b> this runs lightweight, regex-based transforms rather than a full parser for each language.
+      Light and Medium levels are safe for almost any input. <b>Heavy</b> renames identifiers with lookalike
+      characters and can occasionally catch a name it shouldn't (e.g. inside an unusual string). C/C++ string
+      encoding uses compound literals, which need a C99-or-newer compiler. Lua/Luau string decoding uses
+      <code>bit32.bxor</code>, so it needs Lua 5.2+ or Luau — plain Lua 5.1 without the bit32 library should
+      stick to Light. Always diff or test-run obfuscated output before shipping it.
+    </div>
+    <div class="notice">
+      <b>On "undeobfuscatable" —</b> no obfuscator, this one included, can make functional code truly
+      unrecoverable. If code has to run, its logic and every string it ever produces can be extracted just by
+      running it. Medium/Heavy now XOR-encode string literals with a random per-run key before packing them —
+      that defeats simple find-and-decode scripts and casual reading, which covers most real-world "script
+      stealing." A dedicated reverse engineer with time on their hands can still get through it. Treat this as
+      raising the cost of copying your work, not as encryption.
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand">
+          <!-- drop your own logo image here, e.g. <img src="logo.png" class="brand-logo"> -->
+          <div class="brand-name">OBFX</div>
+        </div>
+        <p class="footer-tag">Code obfuscation across 13 languages, done entirely client-side. Nothing you paste ever leaves your browser.</p>
+      </div>
+      <div class="socials">
+        <a class="social-btn" href="#" target="_blank" rel="noopener" aria-label="X (Twitter)" title="X">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7.6 8.7L23.3 22h-7.1l-5.5-7.2L4.4 22H1.3l8.1-9.3L1 2h7.3l5 6.6L18.9 2zm-1.2 18h1.9L7.4 4H5.4l12.3 16z"/></svg>
+        </a>
+        <a class="social-btn" href="#" target="_blank" rel="noopener" aria-label="YouTube" title="YouTube">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.8zM9.6 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+        </a>
+        <a class="social-btn" href="#" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.7-1.4-1.7-1.1-.8.1-.8.1-.8 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.3-3.2-.1-.3-.6-1.6.1-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6 0c2.3-1.6 3.3-1.2 3.3-1.2.7 1.6.2 2.9.1 3.2.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3z"/></svg>
+        </a>
+        <a class="social-btn" href="#" target="_blank" rel="noopener" aria-label="TikTok" title="TikTok">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 1h-3.3v14.7a3 3 0 1 1-2.1-2.9V9.4a6.3 6.3 0 1 0 5.4 6.2V8.1a8.2 8.2 0 0 0 4.8 1.5V6.3c-1.9 0-3.6-1-4.5-2.5A5.3 5.3 0 0 1 16.6 1z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 OBFX. All rights reserved.</span>
+      <span>light / medium / heavy</span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================= CONFIG ============================= */
+const LANGS = [
+  { id:'css',    label:'CSS',            ext:'.css'  },
+  { id:'lua',    label:'Lua / Luau',     ext:'.lua'  },
+  { id:'python', label:'Python',         ext:'.py'   },
+  { id:'go',     label:'Go',             ext:'.go'   },
+  { id:'js',     label:'JavaScript',     ext:'.js'   },
+  { id:'ts',     label:'TypeScript',     ext:'.ts'   },
+  { id:'php',    label:'PHP',            ext:'.php'  },
+  { id:'rust',   label:'Rust',           ext:'.rs'   },
+  { id:'java',   label:'Java',           ext:'.java' },
+  { id:'c',      label:'C',              ext:'.c'    },
+  { id:'cpp',    label:'C++',            ext:'.cpp'  },
+  { id:'ruby',   label:'Ruby',           ext:'.rb'   },
+  { id:'bash',   label:'Bash / Shell',   ext:'.sh'   },
+];
+const LEVELS = [
+  { id:'light',  label:'Light',  hint:'comments + whitespace' },
+  { id:'medium', label:'Medium', hint:'+ string encoding' },
+  { id:'heavy',  label:'Heavy',  hint:'+ identifier renaming' },
+];
+let state = { lang:'css', level:'medium' };
+
+/* ============================= UTIL ============================= */
+const OBFX_VERSION = 'v1.1.0';
+function headerComment(langId){
+  const msg = OBFX_VERSION + ' Script obfuscated by OBFX.';
+  switch(langId){
+    case 'lua':    return '--[[ ' + msg + ' ]]--';
+    case 'css':    return '/* ' + msg + ' */';
+    case 'python':
+    case 'ruby':
+    case 'bash':   return '# ' + msg;
+    default:       return '// ' + msg; // go, js, ts, php, rust, java, c, cpp
+  }
+}
+function withHeaderComment(langId, code){
+  const comment = headerComment(langId);
+  if(langId === 'bash' && code.startsWith('#!')){
+    const lines = code.split('\n');
+    lines.splice(1, 0, comment); // keep shebang on line 1, comment on line 2
+    return lines.join('\n');
+  }
+  return comment + '\n' + code;
+}
+
+/* ============================= UTIL ============================= */
+function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ============================= OBFUSCATORS ============================= */
+
+const KEYWORDS = {
+  css: new Set(),
+  lua: new Set(['and','break','do','else','elseif','end','false','for','function','goto','if','in',
+    'local','nil','not','or','repeat','return','then','true','until','while','self',
+    'print','pairs','ipairs','type','tostring','tonumber','table','string','math','os','io',
+    'pcall','xpcall','error','assert','require','setmetatable','getmetatable','game','workspace',
+    'Instance','Vector3','CFrame','wait','task','Enum']),
+  python: new Set(['False','None','True','and','as','assert','async','await','break','class','continue',
+    'def','del','elif','else','except','finally','for','from','global','if','import','in','is',
+    'lambda','nonlocal','not','or','pass','raise','return','try','while','with','yield',
+    'self','print','len','range','str','int','float','list','dict','set','tuple','open','super',
+    '__init__','__name__','__main__']),
+  go: new Set(['break','case','chan','const','continue','default','defer','else','fallthrough','for',
+    'func','go','goto','if','import','interface','map','package','range','return','select',
+    'struct','switch','type','var','err','ctx','string','int','bool','float64','nil','true','false',
+    'fmt','Println','Printf','Sprintf','error','make','len','append']),
+  js: new Set(['break','case','catch','class','const','continue','debugger','default','delete','do',
+    'else','export','extends','finally','for','function','if','import','in','instanceof','let','new',
+    'return','super','switch','this','throw','try','typeof','var','void','while','with','yield','async',
+    'await','static','get','set','console','window','document','true','false','null','undefined']),
+  ts: new Set(['break','case','catch','class','const','continue','debugger','default','delete','do',
+    'else','export','extends','finally','for','function','if','import','in','instanceof','let','new',
+    'return','super','switch','this','throw','try','typeof','var','void','while','with','yield','async',
+    'await','static','get','set','console','window','document','true','false','null','undefined',
+    'interface','type','enum','implements','private','public','protected','readonly','namespace','as']),
+  php: new Set(['this','_GET','_POST','_SESSION','_SERVER','_COOKIE','_FILES','_ENV','GLOBALS']),
+  rust: new Set(['as','break','const','continue','crate','else','enum','extern','false','fn','for','if',
+    'impl','in','let','loop','match','mod','move','mut','pub','ref','return','self','Self','static',
+    'struct','super','trait','true','type','unsafe','use','where','while','async','await','dyn',
+    'String','Vec','Option','Some','None','Ok','Err','println','format']),
+  java: new Set(['abstract','assert','boolean','break','byte','case','catch','char','class','const',
+    'continue','default','do','double','else','enum','extends','final','finally','float','for','goto',
+    'if','implements','import','instanceof','int','interface','long','native','new','package','private',
+    'protected','public','return','short','static','strictfp','super','switch','synchronized','this',
+    'throw','throws','transient','try','void','volatile','while','true','false','null','String','System',
+    'out','println']),
+  c: new Set(['auto','break','case','char','const','continue','default','do','double','else','enum',
+    'extern','float','for','goto','if','int','long','register','return','short','signed','sizeof',
+    'static','struct','switch','typedef','union','unsigned','void','volatile','while','printf','scanf',
+    'NULL','main','argc','argv']),
+  cpp: new Set(['alignas','alignof','and','asm','auto','bool','break','case','catch','char','class',
+    'const','constexpr','continue','decltype','default','delete','do','double','else','enum','explicit',
+    'export','extern','false','float','for','friend','goto','if','inline','int','long','mutable',
+    'namespace','new','noexcept','nullptr','operator','private','protected','public','register',
+    'return','short','signed','sizeof','static','struct','switch','template','this','throw','true',
+    'try','typedef','typeid','typename','union','unsigned','using','virtual','void','volatile','while',
+    'std','cout','cin','endl','main','argc','argv','string','vector']),
+  ruby: new Set(['begin','end','def','class','module','if','elsif','else','unless','while','until',
+    'for','in','do','case','when','then','yield','return','break','next','redo','retry','self','nil',
+    'true','false','and','or','not','puts','print','p','require','attr_accessor','attr_reader',
+    'attr_writer','new','initialize']),
+  bash: new Set(['if','then','else','elif','fi','for','while','until','do','done','case','esac',
+    'function','return','exit','local','export','readonly','echo','printf','PATH','HOME','USER','IFS',
+    'PWD','SHELL','BASH','EDITOR']),
+};
+
+/* ---- syntax highlighter (self-contained, runs after KEYWORDS exists) ---- */
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+const HL_KEYWORDS = Object.assign({}, KEYWORDS, {
+  php: new Set([...KEYWORDS.php, 'abstract','and','array','as','break','callable','case','catch','class',
+    'clone','const','continue','declare','default','do','echo','else','elseif','empty','extends','final',
+    'finally','fn','for','foreach','function','global','goto','if','implements','include','include_once',
+    'instanceof','insteadof','interface','isset','list','match','namespace','new','or','print','private',
+    'protected','public','require','require_once','return','static','switch','throw','trait','try',
+    'unset','use','var','while','xor','yield','true','false','null']),
+});
+const HL_CFG = {
+  css:    { blockComment:['/*','*/'], lineComment:null,        strings:['"',"'"], keywords:null },
+  lua:    { blockComment:['--[[',']]'], lineComment:['--'],    strings:['"',"'"], keywords:HL_KEYWORDS.lua },
+  python: { blockComment:null,        lineComment:['#'],       strings:['"',"'"], keywords:HL_KEYWORDS.python },
+  go:     { blockComment:['/*','*/'], lineComment:['//'],      strings:['"'],     keywords:HL_KEYWORDS.go },
+  js:     { blockComment:['/*','*/'], lineComment:['//'],      strings:['"',"'"], keywords:HL_KEYWORDS.js },
+  ts:     { blockComment:['/*','*/'], lineComment:['//'],      strings:['"',"'"], keywords:HL_KEYWORDS.ts },
+  php:    { blockComment:['/*','*/'], lineComment:['//','#'],  strings:['"',"'"], keywords:HL_KEYWORDS.php },
+  rust:   { blockComment:['/*','*/'], lineComment:['//'],      strings:['"'],     keywords:HL_KEYWORDS.rust },
+  java:   { blockComment:['/*','*/'], lineComment:['//'],      strings:['"'],     keywords:HL_KEYWORDS.java },
+  c:      { blockComment:['/*','*/'], lineComment:['//'],      strings:['"'],     keywords:HL_KEYWORDS.c },
+  cpp:    { blockComment:['/*','*/'], lineComment:['//'],      strings:['"'],     keywords:HL_KEYWORDS.cpp },
+  ruby:   { blockComment:null,        lineComment:['#'],       strings:['"',"'"], keywords:HL_KEYWORDS.ruby },
+  bash:   { blockComment:null,        lineComment:['#'],       strings:['"',"'"], keywords:HL_KEYWORDS.bash },
+};
+const HL_REGEX_CACHE = {};
+function buildHLRegex(cfg){
+  const parts = [];
+  if(cfg.blockComment){
+    parts.push('(?<comment>'+escRe(cfg.blockComment[0])+'[\\s\\S]*?'+escRe(cfg.blockComment[1])+')');
+  }
+  if(cfg.lineComment){
+    parts.push('(?<linecomment>(?:'+cfg.lineComment.map(escRe).join('|')+').*$)');
+  }
+  if(cfg.strings && cfg.strings.length){
+    const strAlts = cfg.strings.map(q=>{
+      const qe = escRe(q);
+      return qe+'(?:[^'+qe+'\\\\\\n]|\\\\.)*'+qe;
+    }).join('|');
+    parts.push('(?<string>'+strAlts+')');
+  }
+  parts.push('(?<number>\\b\\d+(?:\\.\\d+)?\\b)');
+  if(cfg.keywords && cfg.keywords.size){
+    const kwAlts = [...cfg.keywords].sort((a,b)=>b.length-a.length).map(escRe).join('|');
+    parts.push('(?<keyword>\\b(?:'+kwAlts+')\\b)');
+  }
+  return new RegExp(parts.join('|'), 'gm');
+}
+function getHLRegex(langId){
+  if(!HL_REGEX_CACHE[langId]) HL_REGEX_CACHE[langId] = buildHLRegex(HL_CFG[langId]);
+  return HL_REGEX_CACHE[langId];
+}
+function highlightCode(code, langId){
+  const cfg = HL_CFG[langId];
+  if(!cfg) return escapeHtml(code);
+  const re = getHLRegex(langId);
+  let out = '';
+  let last = 0;
+  for(const m of code.matchAll(re)){
+    out += escapeHtml(code.slice(last, m.index));
+    const g = m.groups || {};
+    let cls = null;
+    if(g.comment !== undefined || g.linecomment !== undefined) cls = 'tok-comment';
+    else if(g.string !== undefined) cls = 'tok-string';
+    else if(g.number !== undefined) cls = 'tok-number';
+    else if(g.keyword !== undefined) cls = 'tok-keyword';
+    out += cls ? '<span class="'+cls+'">'+escapeHtml(m[0])+'</span>' : escapeHtml(m[0]);
+    last = m.index + m[0].length;
+  }
+  out += escapeHtml(code.slice(last));
+  return out;
+}
+
+function randXorKey(){ return 1 + Math.floor(Math.random()*254); } // 1-254, never 0 (no-op key)
+function randHex(len){
+  const c='0123456789abcdef'; let s='';
+  for(let i=0;i<len;i++) s+=c[Math.floor(Math.random()*16)];
+  return s;
+}
+function confusableName(i){
+  const pool=['I','l','1'];
+  let s='_';
+  for(let k=0;k<6;k++) s+=pool[Math.floor(Math.random()*pool.length)];
+  return s+i;
+}
+function hexName(i){
+  return '_0x'+randHex(4)+i;
+}
+
+function stripBlockComments(code, open, close){
+  const re = new RegExp(escRe(open)+'[\\s\\S]*?'+escRe(close), 'g');
+  return code.replace(re, '');
+}
+function stripLineComments(code, markerPattern){
+  const re = new RegExp(markerPattern+'.*$', 'gm');
+  return code.replace(re, '');
+}
+function collapseBlankLines(code){
+  return code.split('\n').map(l=>l.replace(/[ \t]+$/,'')).join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+function renameIdentifiers(code, names, keywordSet, style){
+  const map = {};
+  let i = 0;
+  names.forEach(n=>{
+    if(!(n in map) && !keywordSet.has(n)){
+      map[n] = style==='heavy' ? confusableName(i++) : hexName(i++);
+    }
+  });
+  let out = code;
+  Object.keys(map).forEach(n=>{
+    const re = new RegExp('\\b'+escRe(n)+'\\b','g');
+    out = out.replace(re, map[n]);
+  });
+  return { code: out, count: Object.keys(map).length };
+}
+
+/* ---- CSS ---- */
+function obfuscateCSS(code, level){
+  const applied = [];
+  let out = code;
+  out = stripBlockComments(out, '/*', '*/'); applied.push('comment strip');
+  if(level !== 'light'){
+    const props = new Set();
+    out.replace(/--([a-zA-Z0-9_-]+)/g, (m,p)=>{ props.add(p); return m; });
+    let i=0; const map={};
+    props.forEach(p=>{ map[p] = 'a'+(i++); });
+    out = out.replace(/--([a-zA-Z0-9_-]+)/g, (m,p)=> '--'+(map[p] ?? p));
+    if(props.size) applied.push('custom-property renaming');
+  }
+  if(level === 'heavy'){
+    const classes = new Set();
+    out.replace(/\.([a-zA-Z_][a-zA-Z0-9_-]*)/g, (m,c)=>{ classes.add(c); return m; });
+    let i=0; const cmap={};
+    classes.forEach(c=>{ cmap[c] = 'c'+hexName(i++).slice(1,7); });
+    Object.keys(cmap).forEach(c=>{
+      const re = new RegExp('\\.'+escRe(c)+'\\b','g');
+      out = out.replace(re, '.'+cmap[c]);
+    });
+    if(classes.size){
+      applied.push('class renaming');
+      const lines = Object.entries(cmap).map(([k,v])=>'  '+k+' -> '+v).join('\n');
+      out = '/* class map — apply the same renames to your HTML:\n'+lines+'\n*/\n' + out;
+    }
+  }
+  out = out.replace(/\s*([{}:;,])\s*/g, '$1').replace(/;}/g,'}').replace(/\s+/g,' ').trim();
+  applied.push('whitespace minification');
+  return { code: out, applied };
+}
+
+/* ---- Lua / Luau ---- */
+function obfuscateLua(code, level){
+  const applied = [];
+  let out = code;
+  out = stripBlockComments(out, '--[[', ']]');
+  out = stripLineComments(out, '--(?!\\[\\[)');
+  applied.push('comment strip');
+
+  if(level !== 'light'){
+    const key = randXorKey();
+    out = out.replace(/(["'])((?:(?!\1)[^\\]|\\.)*)\1/g, (m,q,inner)=>{
+      if(!inner.length) return m;
+      const bytes = [...inner].map(ch=>(ch.charCodeAt(0) ^ key)).join(',');
+      return '(function() local _t={'+bytes+'} local _s="" for _i=1,#_t do _s=_s..string.char(bit32.bxor(_t[_i],'+key+')) end return _s end)()';
+    });
+    applied.push('string literal encoding (XOR obfuscated)');
+  }
+
+  if(level === 'heavy'){
+    const names = new Set();
+    out.replace(/\blocal\s+([a-zA-Z_][\w]*(?:\s*,\s*[a-zA-Z_][\w]*)*)/g, (m,list)=>{
+      list.split(',').forEach(n=>names.add(n.trim()));
+      return m;
+    });
+    out.replace(/\bfunction\s+([a-zA-Z_]\w*)\s*\(([^)]*)\)/g, (m,fn,args)=>{
+      args.split(',').forEach(a=>{ a=a.trim(); if(a) names.add(a); });
+      return m;
+    });
+    const { code: renamed, count } = renameIdentifiers(out, names, KEYWORDS.lua, 'heavy');
+    out = renamed;
+    if(count) applied.push('identifier renaming ('+count+')');
+  }
+
+  out = collapseBlankLines(out);
+  applied.push('whitespace minification');
+  return { code: out, applied };
+}
+
+/* ---- Python ---- */
+function obfuscatePython(code, level){
+  const applied = [];
+  let out = code;
+  out = out.split('\n').map(line=>{
+    const hashIdx = line.indexOf('#');
+    if(hashIdx === -1) return line;
+    const before = line.slice(0, hashIdx);
+    if(before.includes('"') || before.includes("'")) return line;
+    return line.slice(0, hashIdx).replace(/[ \t]+$/,'');
+  }).join('\n');
+  applied.push('comment strip (best effort)');
+
+  if(level !== 'light'){
+    const key = randXorKey();
+    out = out.replace(/(["'])((?:(?!\1)[^\\\n]|\\.)*)\1/g, (m,q,inner)=>{
+      if(!inner.length) return m;
+      if(inner.length > 200) return m;
+      const bytes = [...inner].map(ch=>(ch.charCodeAt(0) ^ key)).join(',');
+      return "(lambda _k=" + key + ": ''.join(chr(_b^_k) for _b in [" + bytes + "]))()";
+    });
+    applied.push('string literal encoding (XOR obfuscated)');
+  }
+
+  if(level === 'heavy'){
+    const names = new Set();
+    out.split('\n').forEach(line=>{
+      const m = line.match(/^\s*([a-zA-Z_]\w*)\s*=(?!=)/);
+      if(m) names.add(m[1]);
+      const fm = line.match(/^\s*def\s+\w+\s*\(([^)]*)\)/);
+      if(fm){
+        fm[1].split(',').forEach(p=>{
+          p = p.trim().split('=')[0].trim();
+          if(p && p !== 'self') names.add(p);
+        });
+      }
+    });
+    const { code: renamed, count } = renameIdentifiers(out, names, KEYWORDS.python, 'heavy');
+    out = renamed;
+    if(count) applied.push('identifier renaming ('+count+')');
+  }
+
+  out = out.split('\n').filter((l,idx,arr)=> l.trim()!=='' || (idx>0 && arr[idx-1].trim()!=='')).join('\n');
+  applied.push('blank line removal');
+  return { code: out, applied };
+}
+
+/* ---- Go ---- */
+function obfuscateGo(code, level){
+  const applied = [];
+  let out = code;
+  out = stripBlockComments(out, '/*', '*/');
+  out = stripLineComments(out, '//');
+  applied.push('comment strip');
+
+  if(level !== 'light'){
+    const key = randXorKey();
+    out = out.replace(/"((?:[^"\\\n]|\\.)*)"/g, (m,inner)=>{
+      if(!inner.length) return m;
+      const bytes = [...inner].map(ch=>(ch.charCodeAt(0) ^ key)).join(',');
+      return 'func() string { _b := []byte{'+bytes+'}; _k := byte('+key+'); _r := make([]byte, len(_b)); for _i, _v := range _b { _r[_i] = _v ^ _k }; return string(_r) }()';
+    });
+    applied.push('string literal encoding (XOR obfuscated)');
+  }
+
+  if(level === 'heavy'){
+    const names = new Set();
+    out.replace(/\b(\w+)\s*:=/g, (m,n)=>{ names.add(n); return m; });
+    out.replace(/\bvar\s+(\w+)\s+/g, (m,n)=>{ names.add(n); return m; });
+    const { code: renamed, count } = renameIdentifiers(out, names, KEYWORDS.go, 'heavy');
+    out = renamed;
+    if(count) applied.push('identifier renaming ('+count+')');
+  }
+
+  out = collapseBlankLines(out);
+  applied.push('whitespace trim');
+  return { code: out, applied };
+}
+
+/* ---- JavaScript / TypeScript (shared) ---- */
+function obfuscateJSFamily(code, level, isTS){
+  const applied = [];
+  let out = code;
+  out = stripBlockComments(out, '/*', '*/');
+  out = stripLineComments(out, '//');
+  applied.push('comment strip');
+
+  if(level !== 'light'){
+    const key = randXorKey();
+    out = out.replace(/(["'])((?:(?!\1)[^\\\n]|\\.)*)\1/g, (m,q,inner)=>{
+      if(!inner.length) return m;
+      const bytes = [...inner].map(ch=>(ch.charCodeAt(0) ^ key)).join(',');
+      return '(function(){var _t=['+bytes+'];var _k='+key+';var _s="";for(var _i=0;_i<_t.length;_i++){_s+=String.fromCharCode(_t[_i]^_k);}return _s;})()';
+    });
+    applied.push('string literal encoding (XOR obfuscated)');
+  }
+
+  if(level === 'heavy'){
+    const names = new Set();
+    out.replace(/\b(?:let|const|var)\s+([a-zA-Z_$][\w$]*(?:\s*,\s*[a-zA-Z_$][\w$]*)*)/g, (m,list)=>{
+      list.split(',').forEach(n=>names.add(n.trim().split(/[:=]/)[0].trim()));
+      return m;
+    });
+    out.replace(/\bfunction\s*\w*\s*\(([^)]*)\)/g, (m,args)=>{
+      args.split(',').forEach(a=>{ a=a.trim().split(/[:=]/)[0].trim(); if(a) names.add(a); });
+      return m;
+    });
+    const kw = isTS ? KEYWORDS.ts : KEYWORDS.js;
+    const { code: renamed, count } = renameIdentifiers(out, names, kw, 'heavy');
+    out = renamed;
+    if(count) applied.push('identifier renaming ('+count+')');
+  }
+
+  out = collapseBlankLines(out);
+  applied.push('whitespace trim');
+  return { code: out, applied };
+}
+
+/* ---- PHP ---- */
+function obfuscatePHP(code, level){
+  const applied = [];
+  let out = code;
+  out = stripBlockComments(out, '/*', '*/');
+  out = stripLineComments(out, '//');
+  out = stripLineComments(out, '#');
+  applied.push('comment strip');
+
+  if(level !== 'light'){
+    const key = randXorKey();
+    out = out.replace(/'((?:[^'\\]|\\.)*)'/g, (m,inner)=>{
+      if(!inner.length) return m;
+      const bytes = [...inner].map(ch=>(ch.charCodeAt(0) ^ key)).join(',');
+      return '(function(){ $_t=['+bytes+']; $_k='+key+'; $_s=""; foreach($_t as $_c){ $_s.=chr($_c^$_k); } return $_s; })()';
+    });
+    applied.push('string literal encoding (XOR obfuscated, single-quoted only)');
+  }
+
+  if(level === 'heavy'){
+    const names = new Set();
+    out.replace(/\$([a-zA-Z_]\w*)/g, (m,n)=>{ names.add(n); return m; });
+    const map = {};
+    let i = 0;
+    names.forEach(n=>{ if(!KEYWORDS.php.has(n)) map[n] = confusableName(i++); });
+    Object.keys(map).forEach(n=>{
+      const re = new RegExp('\\$'+escRe(n)+'\\b','g');
+      out = out.replace(re, '$'+map[n]);
+    });
+    const count = Object.keys(map).length;
+    if(count) applied.push('variable renaming ('+count+')');
+  }
+
+  out = collapseBlankLines(out);
+  applied.push('whitespace trim');
+  return { code: out, applied };
+}
+
+/* ---- Rust ---- */
+function obfuscateRust(code, level){
+  const applied = [];
+  let out = code;
+  out = stripBlockComments(out, '/*', '*/');
+  out = stripLineComments(out, '//');
+  applied.push('comment strip');
+
+  if(level !== 'light'){
+    const key = randXorKey();
+    out = out.replace(/(r#*)?"((?:[^"\\\n]|\\.)*)"/g, (m,rawPrefix,inner)=>{
+      if(rawPrefix) return m;
+      if(!inner.length) return m;
+      const bytes = [...inner].map(ch=>(ch.charCodeAt(0) ^ key)).join(',');
+      return '{ let _b: Vec<u8> = vec!['+bytes+']; let _k: u8 = '+key+'; _b.iter().map(|_c| (_c ^ _k) as char).collect::<String>() }';
+    });
+    applied.push('string literal encoding (XOR obfuscated, raw strings skipped)');
+  }
+
+  if(level === 'heavy'){
+    const names = new Set();
+    out.replace(/\blet\s+(?:mut\s+)?([a-zA-Z_]\w*)/g, (m,n)=>{ names.add(n); return m; });
+    out.replace(/\bfn\s+\w+\s*\(([^)]*)\)/g, (m,args)=>{
+      args.split(',').forEach(a=>{
+        a = a.trim().split(':')[0].trim().replace(/^&\s*(mut\s*)?/,'');
+        if(a && a !== 'self') names.add(a);
+      });
+      return m;
+    });
+    const { code: renamed, count } = renameIdentifiers(out, names, KEYWORDS.rust, 'heavy');
+    out = renamed;
+    if(count) applied.push('identifier renaming ('+count+')');
+  }
+
+  out = collapseBlankLines(out);
+  applied.push('whitespace trim');
+  return { code: out, applied };
+}
+
+/* ---- Java ---- */
+function obfuscateJava(code, level){
+  const applied = [];
+  let out = code;
+  out = stripBlockComments(out, '/*', '*/');
+  out = stripLineComments(out, '//');
+  applied.push('comment strip');
+
+  if(level !== 'light'){
+    out = out.replace(/"((?:[^"\\\n]|\\.)*)"/g, (m,inner)=>{
+      if(!inner.length) return m;
+      const chars = [...inner].map(ch=>"'\\u"+ch.charCodeAt(0).toString(16).padStart(4,'0')+"'").join(',');
+      return 'new String(new char[]{'+chars+'})';
+    });
+    applied.push('string literal encoding');
+  }
+
+  if(level === 'heavy'){
+    const names = new Set();
+    out.replace(/\b(?:int|long|short|byte|char|boolean|float|double|var|String|[A-Z]\w*(?:<[^>]*>)?)\s+([a-zA-Z_]\w*)\s*=/g, (m,n)=>{ names.add(n); return m; });
+    const { code: renamed, count } = renameIdentifiers(out, names, KEYWORDS.java, 'heavy');
+    out = renamed;
+    if(count) applied.push('identifier renaming ('+count+', local declarations only)');
+  }
+
+  out = collapseBlankLines(out);
+  applied.push('whitespace trim');
+  return { code: out, applied };
+}
+
+/* ---- C / C++ (shared) ---- */
+function obfuscateCFamily(code, level, isCpp){
+  const applied = [];
+  let out = code;
+  out = stripBlockComments(out, '/*', '*/');
+  out = stripLineComments(out, '//');
+  applied.push('comment strip');
+
+  if(level !== 'light'){
+    out = out.replace(/"((?:[^"\\\n]|\\.)*)"/g, (m,inner)=>{
+      if(!inner.length) return m;
+      const bytes = [...inner].map(ch=>ch.charCodeAt(0)).join(',')+',0';
+      return '(char[]){'+bytes+'}';
+    });
+    applied.push('string literal encoding (C99 compound literal)');
+  }
+
+  if(level === 'heavy'){
+    const names = new Set();
+    out.replace(/\b(?:int|char|float|double|long|short|unsigned|signed|void|bool|auto|size_t|[A-Z]\w*)\s*\*?\s*([a-zA-Z_]\w*)\s*=/g, (m,n)=>{ names.add(n); return m; });
+    const kw = isCpp ? KEYWORDS.cpp : KEYWORDS.c;
+    const { code: renamed, count } = renameIdentifiers(out, names, kw, 'heavy');
+    out = renamed;
+    if(count) applied.push('identifier renaming ('+count+', local declarations only)');
+  }
+
+  out = collapseBlankLines(out);
+  applied.push('whitespace trim');
+  return { code: out, applied };
+}
+
+/* ---- Ruby ---- */
+function obfuscateRuby(code, level){
+  const applied = [];
+  let out = code;
+  out = stripLineComments(out, '#');
+  applied.push('comment strip');
+
+  if(level !== 'light'){
+    const key = randXorKey();
+    out = out.replace(/"((?:[^"\\\n]|\\.)*)"/g, (m,inner)=>{
+      if(!inner.length || inner.includes('#{')) return m;
+      const bytes = [...inner].map(ch=>(ch.charCodeAt(0) ^ key)).join(',');
+      return '((proc { |_t,_k| _t.map{|_c| (_c^_k).chr}.join }).call(['+bytes+'],'+key+'))';
+    });
+    applied.push('string literal encoding (XOR obfuscated, interpolated strings skipped)');
+  }
+
+  if(level === 'heavy'){
+    const names = new Set();
+    out.split('\n').forEach(line=>{
+      const m = line.match(/^\s*([a-zA-Z_]\w*)\s*=(?!=)/);
+      if(m) names.add(m[1]);
+    });
+    const { code: renamed, count } = renameIdentifiers(out, names, KEYWORDS.ruby, 'heavy');
+    out = renamed;
+    if(count) applied.push('identifier renaming ('+count+')');
+  }
+
+  out = collapseBlankLines(out);
+  applied.push('whitespace trim');
+  return { code: out, applied };
+}
+
+/* ---- Bash / Shell ---- */
+function obfuscateBash(code, level){
+  const applied = [];
+  const lines = code.split('\n');
+  const shebang = lines.length && lines[0].startsWith('#!') ? lines.shift() : null;
+  let out = lines.join('\n');
+  out = stripLineComments(out, '#');
+  applied.push('comment strip');
+
+  if(level !== 'light'){
+    out = out.replace(/'([^']*)'/g, (m,inner)=>{
+      if(!inner.length) return m;
+      const octal = [...inner].map(ch=>'\\'+ch.charCodeAt(0).toString(8).padStart(3,'0')).join('');
+      return "$'"+octal+"'";
+    });
+    applied.push('string literal encoding (single-quoted, ANSI-C style)');
+  }
+
+  if(level === 'heavy'){
+    const names = new Set();
+    out.replace(/^\s*([a-zA-Z_]\w*)=/gm, (m,n)=>{ names.add(n); return m; });
+    const map = {};
+    let i = 0;
+    names.forEach(n=>{ if(!KEYWORDS.bash.has(n)) map[n] = confusableName(i++).replace(/^_/, 'V_'); });
+    Object.keys(map).forEach(n=>{
+      out = out.replace(new RegExp('\\b'+escRe(n)+'=', 'g'), map[n]+'=');
+      out = out.replace(new RegExp('\\$\\{?'+escRe(n)+'\\}?', 'g'), (mm)=> mm.startsWith('${') ? '${'+map[n]+'}' : '$'+map[n]);
+    });
+    const count = Object.keys(map).length;
+    if(count) applied.push('variable renaming ('+count+')');
+  }
+
+  out = collapseBlankLines(out);
+  applied.push('whitespace trim');
+  if(shebang) out = shebang + '\n' + out;
+  return { code: out, applied };
+}
+
+function runObfuscation(lang, level, code){
+  switch(lang){
+    case 'css':    return obfuscateCSS(code, level);
+    case 'lua':    return obfuscateLua(code, level);
+    case 'python': return obfuscatePython(code, level);
+    case 'go':     return obfuscateGo(code, level);
+    case 'js':     return obfuscateJSFamily(code, level, false);
+    case 'ts':     return obfuscateJSFamily(code, level, true);
+    case 'php':    return obfuscatePHP(code, level);
+    case 'rust':   return obfuscateRust(code, level);
+    case 'java':   return obfuscateJava(code, level);
+    case 'c':      return obfuscateCFamily(code, level, false);
+    case 'cpp':    return obfuscateCFamily(code, level, true);
+    case 'ruby':   return obfuscateRuby(code, level);
+    case 'bash':   return obfuscateBash(code, level);
+  }
+}
+
+/* ============================= CUSTOM DROPDOWNS ============================= */
+const openDropdowns = [];
+function closeAllDropdowns(){
+  openDropdowns.forEach(el => el.classList.remove('open'));
+}
+function wireDropdown(wrapEl, triggerEl){
+  openDropdowns.push(wrapEl);
+  triggerEl.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const isOpen = wrapEl.classList.contains('open');
+    closeAllDropdowns();
+    if(!isOpen) wrapEl.classList.add('open');
+  });
+}
+document.addEventListener('click', (e)=>{
+  openDropdowns.forEach(el=>{ if(!el.contains(e.target)) el.classList.remove('open'); });
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape') closeAllDropdowns();
+});
+
+/* -- language dropdown -- */
+const ddEl = document.getElementById('langDropdown');
+const ddTrigger = document.getElementById('ddTrigger');
+const ddMenu = document.getElementById('ddMenu');
+const ddLabel = document.getElementById('ddLabel');
+const ddExt = document.getElementById('ddExt');
+wireDropdown(ddEl, ddTrigger);
+
+function buildDropdownMenu(){
+  ddMenu.innerHTML = '';
+  LANGS.forEach(l=>{
+    const item = document.createElement('div');
+    item.className = 'dd-item' + (state.lang===l.id ? ' active':'');
+    item.innerHTML = '<span class="dd-ext">'+l.ext+'</span><span>'+l.label+'</span><span class="dd-check">✓</span>';
+    item.onclick = ()=>{
+      state.lang = l.id;
+      ddLabel.textContent = l.label;
+      ddExt.textContent = l.ext;
+      closeAllDropdowns();
+      buildDropdownMenu();
+      updateHint();
+      updateInputHighlight();
+    };
+    ddMenu.appendChild(item);
+  });
+}
+
+/* -- obfuscation intensity dropdown -- */
+const lvlEl = document.getElementById('levelDropdown');
+const lvlTrigger = document.getElementById('lvlTrigger');
+const lvlMenu = document.getElementById('lvlMenu');
+const lvlLabel = document.getElementById('lvlLabel');
+const lvlExt = document.getElementById('lvlExt');
+wireDropdown(lvlEl, lvlTrigger);
+
+const LEVEL_EXT = { light:'LT', medium:'MED', heavy:'HVY' };
+function buildLevelMenu(){
+  lvlMenu.innerHTML = '';
+  LEVELS.forEach(l=>{
+    const item = document.createElement('div');
+    item.className = 'dd-item' + (state.level===l.id ? ' active':'');
+    item.innerHTML = '<span class="dd-ext">'+LEVEL_EXT[l.id]+'</span><span class="dd-item-body">'+l.label+'<small>'+l.hint+'</small></span><span class="dd-check">✓</span>';
+    item.onclick = ()=>{
+      state.level = l.id;
+      lvlLabel.innerHTML = l.label + '<span class="dd-sub" id="lvlSub">'+l.hint+'</span>';
+      lvlExt.textContent = LEVEL_EXT[l.id];
+      closeAllDropdowns();
+      buildLevelMenu();
+    };
+    lvlMenu.appendChild(item);
+  });
+}
+
+function updateHint(){
+  const l = LANGS.find(x=>x.id===state.lang);
+  document.getElementById('langHint').textContent = l.label + ' selected';
+}
+
+/* ============================= LIVE INPUT HIGHLIGHTING ============================= */
+const inputEl = document.getElementById('inputCode');
+const inputHighlight = document.getElementById('inputHighlight');
+const inputEditor = document.getElementById('inputEditor');
+const outputEl = document.getElementById('outputCode');
+const outputCodeInner = document.getElementById('outputCodeInner');
+
+function updateInputHighlight(){
+  const code = inputEl.value;
+  try{
+    inputHighlight.innerHTML = code.length ? highlightCode(code, state.lang) : '';
+  }catch(e){
+    inputHighlight.textContent = code;
+  }
+}
+inputEl.addEventListener('input', ()=>{
+  document.getElementById('inMeta').textContent = inputEl.value.length + ' chars';
+  updateInputHighlight();
+});
+inputEl.addEventListener('scroll', ()=>{
+  inputHighlight.scrollTop = inputEl.scrollTop;
+  inputHighlight.scrollLeft = inputEl.scrollLeft;
+});
+// keep the highlight layer's box matching the textarea if the editor is resized by the user
+new ResizeObserver(()=>{
+  inputHighlight.scrollTop = inputEl.scrollTop;
+  inputHighlight.scrollLeft = inputEl.scrollLeft;
+}).observe(inputEditor);
+
+document.getElementById('obfBtn').addEventListener('click', ()=>{
+  const code = inputEl.value;
+  if(!code.trim()){ showToast('Paste some code first'); return; }
+
+  const { code: result, applied } = runObfuscation(state.lang, state.level, code);
+  const finalCode = withHeaderComment(state.lang, result);
+  applied.push('OBFX header comment');
+
+  outputEl.classList.remove('empty');
+  try{
+    outputCodeInner.innerHTML = highlightCode(finalCode, state.lang);
+  }catch(e){
+    outputCodeInner.textContent = finalCode;
+  }
+
+  document.getElementById('outMeta').textContent = finalCode.length + ' chars';
+  document.getElementById('techStrip').innerHTML =
+    '<span><b>'+code.length+'</b> → <b>'+finalCode.length+'</b> chars</span> · <span>'+applied.join(', ')+'</span>';
+});
+
+document.getElementById('copyBtn').addEventListener('click', async ()=>{
+  const txt = outputCodeInner.textContent;
+  if(!txt || outputEl.classList.contains('empty')){ showToast('Nothing to copy yet'); return; }
+  try{ await navigator.clipboard.writeText(txt); showToast('Copied to clipboard'); }
+  catch(e){ showToast('Copy failed — select manually'); }
+});
+
+/* ============================= HERO SCRAMBLE ============================= */
+(function scrambleDemo(){
+  const srcText = 'local key = "launchCode"';
+  const outText = 'local key = string.char(108,97,117,110,99,104,67,111,100,101)';
+  const glyphs = '!<>-_\\/[]{}=+*^?#01';
+  const srcEl = document.getElementById('scrambleSrc');
+  const outEl = document.getElementById('scrambleOut');
+  srcEl.textContent = srcText;
+
+  function scrambleTo(el, target, duration){
+    const start = performance.now();
+    const len = target.length;
+    function frame(now){
+      const t = Math.min(1, (now-start)/duration);
+      let s = '';
+      for(let i=0;i<len;i++){
+        const charDone = t > i/len;
+        if(target[i] === ' '){ s += ' '; }
+        else if(charDone){ s += target[i]; }
+        else{ s += glyphs[Math.floor(Math.random()*glyphs.length)]; }
+      }
+      el.textContent = s;
+      if(t<1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+  function loop(){
+    scrambleTo(outEl, outText, 1400);
+    setTimeout(()=>{
+      scrambleTo(outEl, ''.padEnd(outText.length,' '), 500);
+      setTimeout(loop, 2600);
+    }, 2600);
+  }
+  loop();
+})();
+
+/* ============================= INIT ============================= */
+let wrapOn = true;
+const wrapBtn = document.getElementById('wrapToggle');
+function applyWrap(){
+  outputEl.classList.toggle('nowrap', !wrapOn);
+  inputEditor.classList.toggle('nowrap', !wrapOn);
+  inputEl.setAttribute('wrap', wrapOn ? 'soft' : 'off');
+  wrapBtn.textContent = 'Wrap: ' + (wrapOn ? 'On' : 'Off');
+}
+wrapBtn.addEventListener('click', ()=>{
+  wrapOn = !wrapOn;
+  applyWrap();
+});
+applyWrap();
+
+buildDropdownMenu();
+buildLevelMenu();
+updateHint();
+updateInputHighlight();
+</script>
+</body>
+</html>
